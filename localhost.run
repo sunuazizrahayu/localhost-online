@@ -1,0 +1,41 @@
+#!/bin/bash
+# rename this script to `online`
+# put this script to your bin directory
+# access with `online <port>`, example: `online 8000`
+# read more: https://localhost.run/docs/
+
+PORT=$1
+if [ -z "$PORT" ]; then
+  echo "Usage: online <port>"
+  exit 1
+fi
+
+TMPFILE=$(mktemp)
+URL=""
+
+# Cleanup handler – no URL displayed again
+cleanup() {
+  echo -e "\n\n🔌 Tunnel closed."
+  pkill -P $$ ssh 2>/dev/null
+  rm -f "$TMPFILE"
+  exit 0
+}
+
+trap cleanup INT
+
+# Run ssh in background
+(
+  ssh -T -R 80:localhost:$PORT localhost.run &> "$TMPFILE"
+) &
+
+# Extract URL once
+while [ -z "$URL" ]; do
+  URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.lhr\.life' "$TMPFILE" | head -n1)
+  sleep 0.3
+done
+
+# Show URL only once
+echo "🔗 Public URL: $URL"
+
+# Keep script alive (no wait)
+sleep infinity
